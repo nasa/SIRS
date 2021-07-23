@@ -1,0 +1,54 @@
+      Simplified Improved Reference Subtraction (SIRS) Equations
+
+                         Bernard J. Rauscher
+                              NASA/GSFC
+
+                          12 February 2012.
+
+1.  INTRODUCTION
+
+The purpose of this document is to recast the key equations from Rauscher,
+B. J. et al. "Improved reference sampling and subtraction: A technique for
+reducing the read noise of near-infrared detector systems",
+PASP 129, 105003-- (2017) into a more suitable form for this application. 
+Dale Fixsen first derived these equations for the JWST Near Infrared 
+Spectrograph.
+
+Here is how the equations currently appear in the paper.
+
+α = (Y - f f* X Z/P) / (R - f f* Z Z*/P)
+β = f * (X R/P - YZ*/P) / (R - f f* Z Z*/P)
+
+N = norm norm*
+R = ref ref*
+P = rho rho*
+X = norm rho*
+Y = norm ref*
+Z = rho ref*
+
+Here, "norm" = normal pixels, "ref" = reference pixels, and "rho" = the
+reference output. These are all in the Fourier domain.
+
+2. REVISED NOMENCLATURE
+
+It will be helpful to have new, more intuitive symbols for all of them in
+IRS. Therefore, assign as follow:
+
+"norm" -> 𝓷,
+"ref" -> 𝓵,
+"rho" -> 𝓻,
+"R" -> 𝕃, and
+"P" -> ℝ,
+
+and so on. With these substitutions, the original equations become the
+following.
+
+α = (𝕐 - f f* 𝕏 ℤ/ℝ) / (𝕃 - f f* ℤ ℤ*/ℝ) # Operates on left ref. cols.
+β = f * (𝕏 𝕃/ℝ - 𝕐ℤ*/ℝ) / (𝕃 - f f* ℤ ℤ*/ℝ) # Operates on right ref cols.
+
+ℕ = 𝓷 𝓷*  # Normal
+𝕃 = 𝓵 𝓵*  # Left
+ℝ = 𝓻 𝓻*  # Right
+𝕏 = 𝓷 𝓻*  # Mixed...
+𝕐 = 𝓷 𝓵*
+ℤ = 𝓻 𝓵*
