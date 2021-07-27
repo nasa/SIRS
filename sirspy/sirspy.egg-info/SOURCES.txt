@@ -1,0 +1,13 @@
+README.md
+setup.py
+sirspy/LegFit.py
+sirspy/SIRS.py
+sirspy/__init__.py
+sirspy/make_fourier_matrices.py
+sirspy/rowsonly.py
+sirspy/t2c.py
+sirspy.egg-info/PKG-INFO
+sirspy.egg-info/SOURCES.txt
+sirspy.egg-info/dependency_links.txt
+sirspy.egg-info/not-zip-safe
+sirspy.egg-info/top_level.txt
