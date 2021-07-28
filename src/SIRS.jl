@@ -5,6 +5,7 @@ module SIRS
     using FITSIO         # FITS files
     using FFTW           # FFTs
     using Glob           # Searching for files
+    using HDF5           # Used when exporting for sirspy
     using Jacobi         # Legendre polynomials
     using JLD            # Save and load variables in Julia Data format (JLD)
                          #     JLD is a "dialect" of HDF5
@@ -42,6 +43,7 @@ module SIRS
     export chsuf               # Change a string's suffix
     export clear!              # Clear coadds from SIRSCore
     export coadd!              # Coadd a file into SIRSCore
+    export export_to_sirspy    # Export SIRSCore parameters needed by sirspy
     export get_file_list       # Convenience function for data on ADAPT
     export legfit              # Fit Legendre polynomials
     export legval              # Model datacubes from Legendre polynomials
@@ -61,6 +63,7 @@ module SIRS
     include("chsuf.jl")
     include("clear!.jl")
     include("coadd!.jl")
+    include("export_to_sirspy.jl")
     include("get_file_list.jl")
     include("legfit.jl")
     include("legval.jl")

@@ -3,9 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
 
-from .t2c import t2c
-from .make_fourier_matrices import make_fourier_matrices
-
 
 class SIRS():
     
@@ -20,23 +17,30 @@ class SIRS():
         Parameters: sirs_file:string
                       Name of a SIRS weights file. The suffix will be .jld.
         """
+        # Test to be sure it is an HDF5 file and not JLD
+        if sirs_file[-3:] != '.h5':
+            print('ERROR: Filename suffix must be .h5.')
+            return(None)
         
         # Open the cal. file
         f = h5py.File(sirs_file, "r")
         
         # Recover just the parameters needed to
         # apply SIRS reference correction
-        self.naxis1 = np.int64(f['naxis1'][...])       # Number of columns
-        self.naxis2 = np.int64(f['naxis2'][...])       # Number of rows
-        self.nout = np.int64(f['nout'][...])           # Number of outputs
-        self.nroh = np.int64(f['nroh'][...])           # New row overhead in pixels
-        self.xsize = np.int64(f['xsize'][...])         # x-size one output
-        self.ysize = np.int64(f['ysize'][...])         # y-size one output)
-        self.nstep = (self.xsize+self.nroh)*self.ysize # Total number of time steps
-        self.freq = np.array(f['𝒇'][...],
-                             dtype=np.float64)         # Incomplet Fourier transform frequencies
-        self.α = f['α'][...]                           # SIRS weights
-        self.β = f['β'][...]                           # SIRS weights
+        self.naxis1 = np.int64(f['SIRSCore']['naxis1'])       # Number of columns
+        self.naxis2 = np.int64(f['SIRSCore']['naxis2'])       # Number of rows
+        self.nout   = np.int64(f['SIRSCore']['nout'])         # Number of outputs
+        self.nroh   = np.int64(f['SIRSCore']['nroh'])         # New row overhead in pixels
+        self.xsize  = np.int64(f['SIRSCore']['xsize'])        # x-size one output
+        self.ysize  = np.int64(f['SIRSCore']['ysize'])        # y-size one output)
+        self.nstep  = (self.xsize+self.nroh)*self.ysize # Total number of time steps
+        self.α      = np.transpose(np.array(f['SIRSCore']['α']))            # SIRS weights
+        self.β      = np.transpose(np.array(f['SIRSCore']['β']))            # SIRS weights
+        
+        # Zero out f=0 Hz in alpha and beta. We correct this frequency using
+        # only reference rows.
+        self.α[:,0] = 0.0
+        self.β[:,0] = 0.0
         
         # Parameters used for DC correction
         self.rowslim = (self.naxis2-3,self.naxis2-2) # 1st and last reference rows to use
@@ -45,35 +49,9 @@ class SIRS():
                                                                                        # when robustly computing reference
                                                                                        # rows mean.
         
-        # The SIRS calibration files contain the Fourier basis vectors, SFB_B,
-        # that were used to compute the incomplete Fourier transform and their
-        # Moore-Penrose inverse, SFT_Binv. Unfortunately, they unpack to non-standard
-        # numpy arrays in python and I was not able to convert them quickly. I therefore 
-        # re-compute the basis vectors using make_fourier_matrices().
-        # self.B = f['SFT_B'][...]            # Fourier basis vectors
-        # self.pinv_B = f['SFT_Binv'][...]    # Moore-Penrose inverse of above
-        self.j = np.array(f['SFT_j'][...],
-                          dtype=np.int64)     # A vector of j values, j in {1,2,... n}.
-                                              # These specify which time steps are used
-                                              # to compute the incomplete Fourier transform
-        self.j -= 1                           # Python uses zero-offset arrays
-        # Convert from arrays of tuples to complex arrays
-        self.α = t2c(self.α)
-        self.β = t2c(self.β)
-        
-        # Make the Fourier basis vectors and compute the Moore-Penrose inverse.
-        # This is available in the JLD file, but it turns out to be faster in python to just
-        # compute it anew. The basis vectors can be seen in the "Implementation Details" here:
-        # 
-        #     https://numpy.org/doc/stable/reference/routines.fft.html.
-        #
-        # Figure out how many basis vectors are needed to do just the low frequencies
-        # shown in the JATIS article, Fig 3a
-        #
-        # ***** FOR JWST WE NEED TO KEEP THE HIGH FREQUENCIES TOO. THIS IS DONE IN THE
-        #       JULIA CODE, BUT NOT SIRSPY AS OF NOW.
-        self.nvec = (len(self.freq)-1)//2 + 1 # +1 is for zero frequency
-        self.B, self.pinv_B = make_fourier_matrices(self.j,self.nvec,self.nstep)
+        # Parameters related to computing incomplete Fourier transforms
+        self.freq   = np.array(f['SIRSCore']['freq'])         # Incomplet Fourier transform frequencies
+        self.incft  = np.array(f['SIRSCore']['incft'])        # Incomplete Fourier transform operator (a matrix)
         
     def plot(self, op, title="", mag=1.0):
         """
@@ -88,9 +66,10 @@ class SIRS():
                       Plot magnification
         """
         
-        # Define ranges of frequencies to plot
+        # Define ranges of frequencies to plot. Here we ignore f = 0 Hz
+        # since the correction for that does not rely on alpha and beta
         nfreq = len(self.freq)
-        f_low_min  = self.freq[0]                       # Minimum frequency to plot
+        f_low_min  = self.freq[0]            # Minimum frequency to plot
         f_low_max  = self.freq[(nfreq-1)//2] # Maximum frequency to plot
         f_high_min = self.freq[(nfreq-1)//2+1]
         f_high_max = self.freq[-1]
@@ -99,10 +78,10 @@ class SIRS():
         fig, ax = plt.subplots(2, 2, figsize=(mag*6.4, mag*4.8)) # Over-under plots
         
         # Plot low frequency amplitude
-        ax[0,0].plot(self.freq[self.freq <= f_low_max],
-                     np.abs(self.α[op, self.freq <= f_low_max]), '-', alpha=.7, label='$\\alpha$')
-        ax[0,0].plot(self.freq[self.freq <= f_low_max],
-                     np.abs(self.β[op, self.freq <= f_low_max]), '-', alpha=.7, label='$\\beta$')
+        ax[0,0].plot(self.freq[self.freq<=f_low_max], np.abs(self.α[op, self.freq<=f_low_max]),
+                     '-', alpha=.7, label='$\\alpha$')
+        ax[0,0].plot(self.freq[self.freq <= f_low_max], np.abs(self.β[op, self.freq <= f_low_max]),
+                     '-', alpha=.7, label='$\\beta$')
         ax[0,0].set_ylim(-.05,1)
         ax[0,0].set_ylabel('Amplitude')
         ax[0,0].legend(loc='upper right')
@@ -121,6 +100,7 @@ class SIRS():
         ax[1,0].set_ylim(-np.pi,+np.pi)
         ax[1,0].set_xlabel('Frequency (Hz)')
         ax[1,0].set_ylabel('Phase')
+
         
         # Plot high frequency phase
         ax[1,1].plot(self.freq[self.freq >= f_high_min] - self.freq[-1], np.angle(self.α[op, self.freq >= f_high_min]), '.', alpha=.2)
@@ -140,7 +120,7 @@ class SIRS():
         Parameters: d, Data vector
                       The input data vector
         """
-        return(np.matmul(self.pinv_B, d))
+        return(np.matmul(self.incft, d))
         
         
     def refcor(self, D, pplfix1=False, rowsonly=False):
@@ -213,18 +193,6 @@ class SIRS():
                     # Flip odd numbered outputs
                     if np.mod(op,2)==1:
                         ref = np.fliplr(ref)
-
-
-                    # A stub used for debugging. Leaving it in because
-                    # it may be needed again. To use this, limit the number
-                    # of frames and outputs to 1.
-                    # _d = D[z,:,:4]
-                    # _d -= np.mean(_d)
-                    # _r = ref[:,:4]
-                    # _r -= np.mean(_r)
-                    # plt.plot(np.mean(_d, axis=1), '.', alpha=.2)
-                    # plt.plot(np.mean(_r, axis=1), '-')
-                    # return(plt)
 
                     # SIRS reference correct data
                     D[z,:,x0:x1] -= ref

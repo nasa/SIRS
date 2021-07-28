@@ -1,13 +1,13 @@
 import numpy as np
 
-class LegFit():
+class Legendre():
     """
-    Base Class for up-the-ramp Legendre Polynomial fitting
+    Base Class for up-the-ramp Legendre fitting and modeling
     
     Parameters: nsamp, int
-                  Number of samples up-the-ramp
+                  Number of equally spaced samples or groups up-the-ramp
                 degree, int
-                  Legendre fit degree
+                  Degree of Legendre polynomial fit
     """
     def __init__(self, nsamp, degree):
         
@@ -15,9 +15,13 @@ class LegFit():
         self.nsamp = nsamp   # Number of up-the-ramp samples
         self.degree = degree # Fit degree
         
-        # Build the Legendre basis matrix
-        self.x = 2*np.arange(nsamp)/(nsamp-1)-1 # x-values for computing Legendre polynomials
-        self.B = np.empty((nsamp,degree+1), dtype=np.float) # The empty matrix
+        # Build the Legendre basis matrix. In doing so, we allow
+        # for the very first sample to be a "virtual" sample taken
+        # immediately after reset. Although the Legendre polynomials
+        # are defined over the interval x ∈ [-1,+1], our basis vectors
+        # always have x > -1.
+        self.x = (2*np.arange(nsamp+1)/nsamp-1)[1:]
+        self.B = np.empty((nsamp,degree+1), dtype=np.float) # Empty basis matrix
         p = np.zeros((degree+1), dtype=np.int) # Used to pick out Legendre polynomials
         p[0] = 1 # Initialize it
         for col in np.arange(degree+1):
@@ -26,7 +30,10 @@ class LegFit():
         # Compute its Moore-Penrose inverse, which does the fitting
         self.pinvB = np.linalg.pinv(self.B)
         
-    def fit(self, D):
+        # Compute the matrix that does the modeling
+        self.B_x_pinvB = np.matmul(self.B, self.pinvB)
+        
+    def legfit(self, D):
         """
         Legendre fit a datacube
         
