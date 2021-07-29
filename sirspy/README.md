@@ -26,4 +26,10 @@ Alternatively, you can set these envars in your `BASH` initialization script.
 ## 3. Revision History
 
 26 July 2021, B.J.Rauscher, NASA/GSFC
+* Now sirs_3.5.0
 * Initial NASA GitHub release
+
+29 July 2021, B.J.Rauscher, NASA/GSFC
+* Now sirs_3.5.1
+* Refined JWST NIRISS sirspy Example
+* Refined JWST NIRCam sirspy Example
