@@ -7,9 +7,17 @@ The filename is generated from information in the SIRSCore struct.
     Parameters: SIRSCore::SIRSCore
                   A coadded SIRSCore struct
                 output_filename::String
-                  The saveset goes here
+                  The saveset goes here. It is required
+                  to have the suffix .jld.
 """
 function save(sc::SIRSCore, output_filename::String)
+    
+    # Check to be sure that the output filename's suffix is .jld
+    if output_filename[end-3:end] != ".jld"
+        println("Error: output_filename must have the suffix .jld")
+        flush(stdout)
+        return(-1)
+    end
     
     # Get data from the SFT
     SFT_j = sc.SFT.j
@@ -20,6 +28,7 @@ function save(sc::SIRSCore, output_filename::String)
     
     # Create a dictionary containing the information to save
     dict = Dict(
+        "hxrg_kind" => sc.hxrg_kind,
         "naxis1" => sc.naxis1,
         "naxis2" => sc.naxis2,
         "naxis3" => sc.naxis3,
@@ -56,6 +65,7 @@ function save(sc::SIRSCore, output_filename::String)
     )
     
     # Save results
+    println(dict)
     JLD.save(output_filename, dict)
     
 end
