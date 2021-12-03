@@ -6,7 +6,7 @@ from scipy import interpolate
 
 class SIRS():
     
-    RB = 4 # Reference pixel border width
+    RB = 4 # Reference pixel border width. This is the same for all HxRG detectors
     
     def __init__(self, sirs_file):
         """
@@ -197,8 +197,23 @@ class SIRS():
                     # SIRS reference correct data
                     D[z,:,x0:x1] -= ref
                 
-                # Correct DC using reference rows
-                ref = np.mean(np.sort(D[z,self.rowslim[0]:self.rowslim[1]+1,
+                # Correct DC using reference rows. Per a request from Chris Willott
+                # of Hertzberg Astrophysics, this now includes an alternating column
+                # noise (ACN) correction for the middle outputs. The first and last outputs do
+                # not require this because SIRS already applies an ACN correction.
+                if (op==0) or (op==self.nout-1):
+                    ref = np.mean(np.sort(D[z,self.rowslim[0]:self.rowslim[1]+1,
                                         x0:x1].flatten())[self.discard:-self.discard])
-                D[z,:,x0:x1] -= ref
+                    D[z,:,x0:x1] -= ref
+                else:
+                    # Discard only half as many since we are working only with evens or odds
+                    _discard = np.int(np.round(self.discard/2))
+                    # Evens
+                    ref = np.mean(np.sort(D[z,self.rowslim[0]:self.rowslim[1]+1,
+                                        x0:x1:2].flatten())[_discard:-_discard])
+                    D[z,:,x0:x1:2] -= ref
+                    # Odds
+                    ref = np.mean(np.sort(D[z,self.rowslim[0]:self.rowslim[1]+1,
+                                        x0+1:x1:2].flatten())[_discard:-_discard])
+                    D[z,:,x0+1:x1:2] -= ref
                 
