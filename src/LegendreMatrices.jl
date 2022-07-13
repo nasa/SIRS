@@ -24,8 +24,9 @@ struct LegendreMatrices
         # Pick out parameters for readability
         nrows, ncols = size
         
-        # Make x. The first element is a hypothetical "virtual"
-        # sample taken immediately after reset.
+        #= Make x. The first element is a hypothetical "virtual"
+        sample taken immediately after reset. We discard this 
+        and don't try to fit it. =#
         x = collect(-1:2/(nrows):+1)[2:end]
         
         # Make the basis vectors

@@ -71,11 +71,25 @@ function sirssub!(sc::SIRSCore, D::Array{Float64,3}; f_max=nothing, rowsonly=fal
                 
             end
             
-            # Use top 4 rows for DC correction. Just use the center 2 for
-            # now. We will revisit this with LAML later. Use a more gentle clip
-            # for reference pixels than for regular pixels.
-            D[x0:x1,:,z] .-= mean(StatsBase.trim(reshape(D[x0:x1,sc.naxis2-2:sc.naxis2-1,z], :),
-                    prop=TRIM_MED))
+            #= Use top 4 rows for DC correction. These are the last rows read out.
+            They are usually stable. The inner and outer rows sometimes suffer from
+            being on the edges, so use only the two center rows. Per a request from Chris
+            Willott, treat the middle outputs differently to suppress ACN. For the first and
+            last outputs, SIRS picks up ACN at Nyquist. For these, there is nothing
+            special to do. =#
+            if (op==1) || (op==sc.nout)
+                # SIRS already corrects 1st and last output
+                D[x0:x1,:,z] .-= mean(StatsBase.trim(reshape(D[x0:x1,sc.naxis2-2:sc.naxis2-1,z], :),
+                        prop=TRIM_MED))
+            else
+                # Treat even and odd columns separately to suppress ACN
+                odd = x0:2:x1
+                evn = x0+1:2:x1
+                D[odd,:,z] .-= mean(StatsBase.trim(reshape(D[odd,sc.naxis2-2:sc.naxis2-1,z], :),
+                        prop=TRIM_MED))
+                D[evn,:,z] .-= mean(StatsBase.trim(reshape(D[evn,sc.naxis2-2:sc.naxis2-1,z], :),
+                        prop=TRIM_MED))
+            end
                         
         end
         
